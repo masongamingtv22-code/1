@@ -1,17 +1,22 @@
 {
   "schemaVersion": 1,
-  "id": "mcpvp_tiers",
+  "id": "tierlister",
   "version": "1.0.0",
-  "name": "MCPVP Tiers",
+  "name": "TierLister",
   "description": "Shows each player's MCPVP tier above their name tag and in the tab list.",
   "authors": ["Codex"],
   "license": "MIT",
+  "icon": "icon.png",
   "environment": "client",
   "entrypoints": {
     "client": ["com.example.mcptiers.McpvpTiersClient"],
     "modmenu": ["com.example.mcptiers.McpvpTiersModMenu"]
   },
   "mixins": ["mcpvp_tiers.mixins.json"],
-  "depends": { "fabricloader": ">=0.18.0", "minecraft": "~1.21.11", "java": ">=21" },
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21"
+  },
   "suggests": { "modmenu": "*" }
 }
