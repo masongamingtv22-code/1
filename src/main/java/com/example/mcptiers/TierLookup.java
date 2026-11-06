@@ -217,9 +217,9 @@ public final class TierLookup {
         try {
             String tier = switch (source) {
                 case "MCTIERS" -> fetchJsonTier(
-                        "https://mctiers.com/api/v2/profile/by-name/" + encode(username), username, selection);
+                        "https://mctiers.com/api/v2/profile/" + resolveUuid(username), selection);
                 case "PVPTIERS" -> fetchJsonTier(
-                        "https://pvptiers.com/api/search_profile/" + encode(username.toLowerCase(Locale.ROOT)), username, selection);
+                        "https://pvptiers.com/api/profile/" + resolveUuid(username).replace("-", ""), selection);
                 case "SUBTIERS" -> fetchSubTiers(username, selection);
                 default -> fetchMcpvpTier(username, selection);
             };
@@ -257,27 +257,30 @@ public final class TierLookup {
     }
 
     private static String fetchSubTiers(String username, String selection) throws Exception {
-        // SubTiers' profile API is UUID-based, so resolve the current Minecraft name first.
-        HttpResponse<String> profile = get("https://api.mojang.com/users/profiles/minecraft/" + encode(username));
-        if (profile.statusCode() == 204 || profile.statusCode() == 404) return null;
-        if (profile.statusCode() != 200) throw new IllegalStateException("Mojang profile HTTP " + profile.statusCode());
-        JsonObject mojang = JsonParser.parseString(profile.body()).getAsJsonObject();
-        if (!mojang.has("id")) return null;
-        String rawUuid = mojang.get("id").getAsString();
-        String uuid = rawUuid.replaceFirst(
-                "([0-9a-fA-F]{8})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{12})",
-                "$1-$2-$3-$4-$5");
+        String uuid = resolveUuid(username);
         HttpResponse<String> response = get("https://subtiers.net/api/v2/profile/" + uuid);
         if (response.statusCode() == 404) return null;
         if (response.statusCode() != 200) throw new IllegalStateException("SubTiers HTTP " + response.statusCode());
         return parseJsonTier(response.body(), selection);
     }
 
-    private static String fetchJsonTier(String url, String username, String selection) throws Exception {
+    private static String fetchJsonTier(String url, String selection) throws Exception {
         HttpResponse<String> response = get(url);
         if (response.statusCode() == 404 || response.statusCode() == 422) return null;
         if (response.statusCode() != 200) throw new IllegalStateException("HTTP " + response.statusCode());
         return parseJsonTier(response.body(), selection);
+    }
+
+    private static String resolveUuid(String username) throws Exception {
+        HttpResponse<String> profile = get("https://api.mojang.com/users/profiles/minecraft/" + encode(username));
+        if (profile.statusCode() == 204 || profile.statusCode() == 404) return null;
+        if (profile.statusCode() != 200) throw new IllegalStateException("Mojang profile HTTP " + profile.statusCode());
+        JsonObject mojang = JsonParser.parseString(profile.body()).getAsJsonObject();
+        if (!mojang.has("id")) return null;
+        String rawUuid = mojang.get("id").getAsString();
+        return rawUuid.replaceFirst(
+                "([0-9a-fA-F]{8})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{12})",
+                "$1-$2-$3-$4-$5");
     }
 
     private static HttpResponse<String> get(String url) throws Exception {
@@ -362,7 +365,7 @@ public final class TierLookup {
         if (element.isJsonObject()) {
             JsonObject object = element.getAsJsonObject();
             if (object.has("tier") && !object.get("tier").isJsonNull()) {
-                String tier = tierValue(object.get("tier"));
+                String tier = tierValue(object.get("tier"), object);
                 if (tier != null) found.add(new NamedTier(mode, tier));
             }
             for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
@@ -385,16 +388,26 @@ public final class TierLookup {
         }
     }
 
-    private static String tierValue(JsonElement value) {
+    private static String tierValue(JsonElement value, JsonObject ranking) {
         if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
             String candidate = value.getAsString().trim();
             Matcher matcher = TIER.matcher(candidate);
             return matcher.matches() ? matcher.group(1).toUpperCase(Locale.ROOT) : null;
         }
+        // MCTiers and PvPTiers encode tiers as { tier: 1..5, pos: 0|1 }.
+        if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()
+                && ranking.has("pos") && ranking.get("pos").isJsonPrimitive()) {
+            int level = value.getAsInt();
+            int position = ranking.get("pos").getAsInt();
+            if (level >= 1 && level <= 5 && (position == 0 || position == 1)) {
+                return (position == 0 ? "HT" : "LT") + level;
+            }
+        }
         if (value.isJsonObject()) {
             JsonObject object = value.getAsJsonObject();
             for (String key : List.of("code", "name", "tier")) {
-                if (object.has(key) && object.get(key).isJsonPrimitive()) {
+                if (object.has(key) && object.get(key).isJsonPrimitive()
+                        && object.get(key).getAsJsonPrimitive().isString()) {
                     String candidate = object.get(key).getAsString().trim();
                     Matcher matcher = TIER.matcher(candidate);
                     if (matcher.matches()) return matcher.group(1).toUpperCase(Locale.ROOT);
