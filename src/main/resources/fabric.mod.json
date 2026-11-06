@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "MCPVP Tiers",
   "description": "Shows each player's MCPVP tier above their name tag and in the tab list.",
-  "authors": ["Codex"],
+  "authors": ["masongamingttv"],
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
