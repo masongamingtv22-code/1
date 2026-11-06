@@ -10,12 +10,12 @@ Shows each player's selected tier on its own line above their name tag and besid
 
 ## Tier sources
 
-- MCPVP: `https://www.mcpvp.com/@PlayerName`
-- MCTIERS: public profile API at `https://mctiers.com/api/v2/profile/by-name/PlayerName`
-- PVPTIERS: public profile search API at `https://pvptiers.com/api/search_profile/playername`
-- SUBTIERS: public profile API at `https://subtiers.net/api/v2/profile/UUID` (the mod resolves the Minecraft username to a UUID first)
+- **MCPVP:** Public player page at `https://www.mcpvp.com/@PlayerName`.
+- **MCTIERS:** Public profile API at `https://mctiers.com/api/v2/profile/{uuid}` (UUID with dashes).
+- **PVPTIERS:** Public profile API at `https://pvptiers.com/api/profile/{uuid}` (UUID without dashes).
+- **SUBTIERS:** Public profile API at `https://subtiers.net/api/v2/profile/{uuid}` (UUID with dashes).
 
-Lookups run in the background and are cached for ten minutes; failed lookups retry after one minute. Switching source or tier clears the cache. The mod makes public HTTPS GET requests only; it does not send Minecraft account credentials.
+The mod resolves a Minecraft username to its UUID through Mojang before querying the UUID-based providers. Lookups run in the background and are cached for ten minutes; failed lookups retry after one minute. Switching source or tier clears the cache. The mod makes public HTTPS GET requests only; it does not send Minecraft account credentials.
 
 ## Build
 
